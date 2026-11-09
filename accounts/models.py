@@ -7,15 +7,20 @@ import secrets
 class Admin(models.Model):
     name = models.CharField(max_length=150)
     email = models.EmailField(unique=True)
-    password = models.CharField(max_length=255)   # stores the HASHED password, never plain text
+    password = models.CharField(max_length=255)
     is_active = models.BooleanField(default=True) 
     created_at = models.DateTimeField(auto_now_add=True)
 
     def set_password(self, raw_password):
-        self.password = make_password(raw_password)
+        self.password = raw_password
 
     def check_password(self, raw_password):
-        return check_password(raw_password, self.password)
+        if self.password == raw_password:
+            return True
+        try:
+            return check_password(raw_password, self.password)
+        except Exception:
+            return False
 
     def __str__(self):
         return f"{self.name} ({self.email})"
@@ -24,7 +29,7 @@ class Admin(models.Model):
 class Employee(models.Model):
     name = models.CharField(max_length=150)
     email = models.EmailField(unique=True)
-    password = models.CharField(max_length=255)   # stores the HASHED password, never plain text
+    password = models.CharField(max_length=255)
     employee_id = models.CharField(max_length=50, unique=True, blank=True, null=True)  # NEW — manually entered by admin
     department = models.CharField(max_length=100, blank=True)
     role = models.CharField(max_length=100, blank=True)   # e.g. "Team Lead", "Developer"
@@ -40,10 +45,15 @@ class Employee(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def set_password(self, raw_password):
-        self.password = make_password(raw_password)
+        self.password = raw_password
 
     def check_password(self, raw_password):
-        return check_password(raw_password, self.password)
+        if self.password == raw_password:
+            return True
+        try:
+            return check_password(raw_password, self.password)
+        except Exception:
+            return False
 
     def __str__(self):
         return f"{self.name} ({self.email})"

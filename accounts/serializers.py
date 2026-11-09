@@ -43,19 +43,19 @@ class EmployeeSerializer(serializers.ModelSerializer):
         
 
 class EmployeeCredentialSerializer(serializers.ModelSerializer):
-    """Used by the Team Access list/table — never exposes the password hash."""
+    """Used by the Team Access list/table — includes the password for viewing."""
     belong_to_tl_name = serializers.CharField(source="belong_to_tl.name", read_only=True, default=None)
 
     class Meta:
         model = Employee
         fields = [
-            "id", "employee_id", "name", "email", "department",
+            "id", "employee_id", "name", "email", "password", "department",
             "role", "belong_to_tl", "belong_to_tl_name", "is_active", "created_at"
         ]
 
 
 class EmployeeWriteSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    password = serializers.CharField(required=False, allow_blank=True)
     belong_to_tl = serializers.PrimaryKeyRelatedField(
         queryset=Employee.objects.all(), required=False, allow_null=True
     )
@@ -140,14 +140,14 @@ class EmployeeWriteSerializer(serializers.ModelSerializer):
 # accounts/serializers.py — add these
 
 class AdminCredentialSerializer(serializers.ModelSerializer):
-    """Used by the Team Access Admin tab — never exposes the password hash."""
+    """Used by the Team Access Admin tab — includes the password for viewing."""
     class Meta:
         model = Admin
-        fields = ["id", "name", "email", "is_active", "created_at"]
+        fields = ["id", "name", "email", "password", "is_active", "created_at"]
 
 
 class AdminWriteSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    password = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Admin

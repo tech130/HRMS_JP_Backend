@@ -36,6 +36,38 @@ def login_view(request):
 
 
 @api_view(["POST"])
+@permission_classes([AllowAny])
+def forgot_password_view(request):
+    """
+    POST /api/auth/forgot_password/
+    body: { "email": "...", "new_password": "..." }
+    """
+    email = request.data.get("email", "").strip()
+    new_password = request.data.get("new_password", "").strip()
+
+    if not email:
+        return Response({"detail": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+    if not new_password:
+        return Response({"detail": "New password is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check Admin table first
+    admin = Admin.objects.filter(email__iexact=email).first()
+    if admin:
+        admin.set_password(new_password)
+        admin.save()
+        return Response({"message": "Password updated successfully."}, status=status.HTTP_200_OK)
+
+    # Check Employee table
+    employee = Employee.objects.filter(email__iexact=email).first()
+    if employee:
+        employee.set_password(new_password)
+        employee.save()
+        return Response({"message": "Password updated successfully."}, status=status.HTTP_200_OK)
+
+    return Response({"detail": "No account found with this email."}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
     # request.auth is the AuthToken row (see authentication.py)
