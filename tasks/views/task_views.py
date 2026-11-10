@@ -211,3 +211,122 @@ def task_master_detail_view(request, pk):
         serializer.is_valid(raise_exception=True)
         obj = serializer.save()
         return Response(TaskMasterSerializer(obj).data)
+
+
+@api_view(["PATCH", "PUT"])
+@permission_classes([IsAuthenticated])
+def edit_task(request, pk):
+    """
+    PATCH /api/tasks/<int:pk>/edit/
+    Full task edit endpoint.
+    Prefilled with existing task data, allows changing any detail including assigned_to.
+    Guarantees that task_id and sub_task_id remain identical.
+    """
+    try:
+        task = get_object_or_404(Task, pk=pk)
+        if not _owns_task_for_management(request, task):
+            return Response({"detail": "You do not have permission to edit this task."}, status=status.HTTP_403_FORBIDDEN)
+
+        data = request.data
+
+        # Store previous IDs to strictly ensure task_id and sub_task_id are NEVER changed
+        original_task_id = task.task_id
+        original_sub_task_id = task.sub_task_id
+
+        # Handle assignee change
+        assignee_changed = False
+        if "assigned_to" in data:
+            new_emp_id = data.get("assigned_to")
+            target_emp = Employee.objects.filter(pk=new_emp_id).first() if new_emp_id else None
+            if target_emp != task.assigned_to:
+                assignee_changed = True
+                task.assigned_to = target_emp
+                task.assigned_to_admin = None
+                if target_emp and target_emp.department and not data.get("department"):
+                    task.department = target_emp.department
+
+        if "assigned_to_admin" in data:
+            new_admin_id = data.get("assigned_to_admin")
+            from accounts.models import Admin
+            target_admin = Admin.objects.filter(pk=new_admin_id).first() if new_admin_id else None
+            if target_admin != task.assigned_to_admin:
+                assignee_changed = True
+                task.assigned_to_admin = target_admin
+                task.assigned_to = None
+                task.department = ""
+
+        if "project_name" in data:
+            task.project_name = str(data.get("project_name") or "").strip()
+        if "task_name" in data and data.get("task_name"):
+            task.task_name = str(data["task_name"]).strip()
+        if "task_details" in data:
+            task.task_details = str(data.get("task_details") or "").strip()
+        if "department" in data:
+            dept_val = str(data.get("department") or "").strip()
+            if dept_val:
+                task.department = dept_val
+        if "priority" in data and data.get("priority"):
+            task.priority = data["priority"]
+        if "start_date" in data:
+            task.start_date = data["start_date"] or None
+        if "due_date" in data:
+            task.due_date = data["due_date"] or None
+        if "due_time" in data:
+            task.due_time = data["due_time"] or None
+        if "allotted_time" in data and data.get("allotted_time") is not None:
+            try:
+                from decimal import Decimal
+                task.allotted_time = Decimal(str(data["allotted_time"]))
+            except (ValueError, TypeError, Exception):
+                pass
+
+        with transaction.atomic():
+            if assignee_changed:
+                open_session = task.sessions.filter(end_time__isnull=True).first()
+                if open_session:
+                    open_session.close()
+                    task.recalc_total_time()
+                if task.task_status != Task.Status.COMPLETED:
+                    task.task_status = Task.Status.NOT_STARTED
+
+                sender = request.user.instance.name if hasattr(request.user, "instance") and request.user.instance else "Management"
+                assignee = task.assigned_to if task.assigned_to else task.assigned_to_admin
+                if assignee:
+                    url = "/employee/all_tasks" if task.assigned_to else "/admin/my_tasks"
+                    try:
+                        send_notification(
+                            recipient=assignee,
+                            title="Task Reassigned to You",
+                            message=f"{sender} updated and assigned you task: '{task.task_name}' (Priority: {task.priority.capitalize()}).",
+                            event_type=Notification.EventType.TASK_ASSIGNED,
+                            action_url=url,
+                            sender_name=sender,
+                        )
+                    except Exception as notif_err:
+                        print(f"Failed to send task reassign notification: {notif_err}")
+
+            # Strictly maintain same task_id and sub_task_id
+            task.task_id = original_task_id
+            task.sub_task_id = original_sub_task_id
+            task.save()
+
+            try:
+                log_activity(
+                    task, request.user,
+                    ActivityLog.Action.ASSIGNED if assignee_changed else ActivityLog.Action.EDITED,
+                    details={
+                        "task_id": task.task_id,
+                        "sub_task_id": task.sub_task_id,
+                        "assigned_to": task.assignee_name,
+                        "priority": task.priority,
+                        "due_date": str(task.due_date) if task.due_date else None,
+                    }
+                )
+            except Exception as log_err:
+                print(f"Failed to log activity: {log_err}")
+
+        return Response(TaskListSerializer(task).data, status=status.HTTP_200_OK)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

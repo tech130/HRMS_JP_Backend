@@ -7,6 +7,7 @@ class ActivityLog(models.Model):
     class Action(models.TextChoices):
         CREATED = "created", "Task Created"
         ASSIGNED = "assigned", "Assigned / Reassigned"
+        EDITED = "edited", "Task Edited"
         STARTED = "started", "Timer Started"
         PAUSED = "paused", "Timer Paused"
         RESUMED = "resumed", "Timer Resumed"

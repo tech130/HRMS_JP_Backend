@@ -1,7 +1,7 @@
 # tasks/views/__init__.py
 
 from .task_views import (
-    create_task, assign_task, create_and_assign_task, get_all_departments,
+    create_task, assign_task, edit_task, create_and_assign_task, get_all_departments,
     get_all_employees, get_priority_choices, get_all_admins, get_admin_my_tasks,
     task_master_view, task_master_detail_view
 )

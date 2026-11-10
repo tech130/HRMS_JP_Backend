@@ -102,7 +102,7 @@ class EmployeeWriteSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         if self.instance is None and not attrs.get("password"):
-            raise serializers.ValidationError({"password": "Password is required when creating a new employee."})
+            raise serializers.ValidationError({"password": "Password is required when creating a new team member."})
 
         role = attrs.get("role")
         if role is None and self.instance:
@@ -115,9 +115,9 @@ class EmployeeWriteSerializer(serializers.ModelSerializer):
             belong_to_tl = attrs.get("belong_to_tl")
             if belong_to_tl:
                 if self.instance and belong_to_tl.pk == self.instance.pk:
-                    raise serializers.ValidationError({"belong_to_tl": "An employee cannot report to themselves."})
+                    raise serializers.ValidationError({"belong_to_tl": "A team member cannot report to themselves."})
                 if not (belong_to_tl.role and belong_to_tl.role.strip().upper() in ["TL", "TEAM LEAD"]):
-                    raise serializers.ValidationError({"belong_to_tl": "Selected employee is not a Team Lead."})
+                    raise serializers.ValidationError({"belong_to_tl": "Selected member is not a Team Lead."})
 
         return attrs
     

@@ -8,6 +8,7 @@ urlpatterns = [
     path("get_all_tasks/", views.get_all_tasks, name="task-list"),
     path("create_task/", views.create_task, name="task-create"),
     path("create_and_assign/", views.create_and_assign_task, name="task-create-assign"),
+    path("<int:pk>/edit/", views.edit_task, name="task-edit"),
     path("assign_task/<int:pk>/", views.assign_task, name="task-assign"),
 
     path("get_all_departments/", views.get_all_departments, name="task-departments"),

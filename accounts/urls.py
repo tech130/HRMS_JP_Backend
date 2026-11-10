@@ -11,6 +11,7 @@ urlpatterns = [
     path("employees/", views.get_all_employee_credentials, name="employee-credentials-list"),
     path("employees/departments/", views.get_employee_departments, name="employee-departments"),
     path("employees/create/", views.create_employee_credential, name="employee-credentials-create"),
+    path("employees/bulk-create/", views.bulk_create_employees, name="employee-credentials-bulk-create"),
     path("employees/<int:pk>/edit/", views.edit_employee_credential, name="employee-credentials-edit"),
     path("employees/<int:pk>/delete/", views.delete_employee_credential, name="employee-credentials-delete"),
 
